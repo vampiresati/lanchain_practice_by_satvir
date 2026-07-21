@@ -1,7 +1,11 @@
+from langchain_core.tools import tool
 from langchain.agents import create_agent
+
+@tool
 def get_time() -> str:
     """Return the current time."""
     return "10:30 AM"
+
 agent = create_agent(
     model="ollama:qwen3:4b",
     tools=[get_time],
