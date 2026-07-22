@@ -336,9 +336,35 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    from IPython.display import Image, display
-    png = agent.get_graph().draw_mermaid_png()
-    with open("agent_graph.png", "wb") as f:
-        f.write(png)
-    print("Saved to agent_graph.png")
-    main()
+    # Save the agent graph
+    try:
+        png = agent.get_graph().draw_mermaid_png()
+
+        with open("agent_graph.png", "wb") as file:
+            file.write(png)
+
+        print("Saved to agent_graph.png")
+
+    except Exception as error:
+        print("Could not generate agent graph:", error)
+
+    question = "Which table has the device_name?"
+
+    input_data = {
+        "messages": [
+            {
+                "role": "user",
+                "content": question,
+            }
+        ]
+    }
+
+    for step in agent.stream(
+        input_data,
+        context=RuntimeContext(db=db),
+        stream_mode="values",
+    ):
+        messages = step.get("messages", [])
+
+        if messages:
+            messages[-1].pretty_print()
