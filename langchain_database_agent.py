@@ -272,8 +272,6 @@ agent = create_agent(
     system_prompt=SYSTEM_PROMPT,
     context_schema=RuntimeContext,
 )
-
-
 # ============================================================
 # 10. Ask database
 # ============================================================
@@ -338,4 +336,9 @@ def main() -> None:
 
 
 if __name__ == "__main__":
+    from IPython.display import Image, display
+    png = agent.get_graph().draw_mermaid_png()
+    with open("agent_graph.png", "wb") as f:
+        f.write(png)
+    print("Saved to agent_graph.png")
     main()
