@@ -8,6 +8,7 @@ from typing import Any
 import requests
 from dotenv import load_dotenv
 from fastapi import FastAPI, Form, Request
+from fastapi.responses import JSONResponse
 from fastapi.responses import RedirectResponse
 from fastapi.templating import Jinja2Templates
 from langchain.agents import create_agent
@@ -311,6 +312,31 @@ def initialize_session(request: Request) -> None:
         request.session["messages"] = []
 
 
+def is_async_request(request: Request) -> bool:
+    return request.headers.get("X-Requested-With") == "XMLHttpRequest"
+
+
+def extract_ai_content(content: Any) -> str:
+    """
+    Convert Gemini/LangChain content into displayable text.
+    """
+    if isinstance(content, str):
+        return content
+
+    if isinstance(content, list):
+        text_parts = []
+
+        for block in content:
+            if isinstance(block, dict) and block.get("text"):
+                text_parts.append(block["text"])
+            elif isinstance(block, str):
+                text_parts.append(block)
+
+        return "\n".join(text_parts)
+
+    return str(content)
+
+
 @app.get("/")
 def home(request: Request):
     initialize_session(request)
@@ -336,6 +362,15 @@ def send_message(
     user_message = message.strip()
 
     if not user_message:
+        if is_async_request(request):
+            return JSONResponse(
+                status_code=400,
+                content={
+                    "success": False,
+                    "error": "Please enter a message.",
+                },
+            )
+
         return RedirectResponse(url="/", status_code=303)
 
     messages = list(request.session.get("messages", []))
@@ -395,18 +430,7 @@ def send_message(
         )
 
         ai_message = response["messages"][-1]
-        ai_response = ai_message.content
-
-        if isinstance(ai_response, list):
-            text_parts = []
-
-            for block in ai_response:
-                if isinstance(block, dict) and block.get("text"):
-                    text_parts.append(block["text"])
-                elif isinstance(block, str):
-                    text_parts.append(block)
-
-            ai_response = "\n".join(text_parts)
+        ai_response = extract_ai_content(ai_message.content)
 
         if not ai_response:
             ai_response = "I could not generate a response."
@@ -429,6 +453,15 @@ def send_message(
     )
 
     request.session["messages"] = messages
+
+    if is_async_request(request):
+        return JSONResponse(
+            content={
+                "success": True,
+                "user_message": user_message,
+                "agent_message": str(ai_response),
+            }
+        )
 
     return RedirectResponse(url="/", status_code=303)
 
