@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>Weather Assistant</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            padding: 30px 15px;
+            font-family: Arial, sans-serif;
+            background: #f3f4f6;
+        }
+
+        .chat-container {
+            width: min(800px, 100%);
+            margin: auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            padding: 20px;
+            background: #2563eb;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .header h1 {
+            margin: 0;
+            font-size: 22px;
+        }
+
+        .clear-button {
+            color: white;
+            text-decoration: none;
+            border: 1px solid rgba(255, 255, 255, 0.7);
+            border-radius: 6px;
+            padding: 8px 12px;
+        }
+
+        .messages {
+            height: 500px;
+            overflow-y: auto;
+            padding: 20px;
+            background: #f9fafb;
+        }
+
+        .message {
+            max-width: 78%;
+            margin-bottom: 15px;
+            padding: 12px 15px;
+            border-radius: 12px;
+            line-height: 1.5;
+            white-space: pre-wrap;
+            overflow-wrap: anywhere;
+        }
+
+        .user {
+            margin-left: auto;
+            color: white;
+            background: #2563eb;
+        }
+
+        .agent {
+            margin-right: auto;
+            color: #111827;
+            background: #e5e7eb;
+        }
+
+        .chat-form {
+            display: flex;
+            gap: 10px;
+            padding: 15px;
+            border-top: 1px solid #e5e7eb;
+        }
+
+        .chat-form input[type="text"] {
+            flex: 1;
+            min-width: 0;
+            padding: 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            font-size: 16px;
+        }
+
+        .chat-form button {
+            padding: 12px 20px;
+            border: 0;
+            border-radius: 8px;
+            color: white;
+            background: #2563eb;
+            cursor: pointer;
+        }
+
+        .location-status {
+            padding: 0 15px 12px;
+            color: #6b7280;
+            font-size: 13px;
+        }
+    </style>
+</head>
+
+<body>
+<div class="chat-container">
+
+    <div class="header">
+        <h1>Weather Assistant</h1>
+
+        <a
+            class="clear-button"
+            href="{{ url_for('clear_chat') }}"
+        >
+            Clear
+        </a>
+    </div>
+
+    <div class="messages" id="messages">
+
+        {% if messages %}
+
+            {% for message in messages %}
+
+                <div class="message {{ message.sender }}">
+                    {{ message.text }}
+                </div>
+
+            {% endfor %}
+
+        {% else %}
+
+            <div class="message agent">
+                Hello! Ask me about the weather in any city.
+            </div>
+
+        {% endif %}
+
+    </div>
+
+    <form
+        class="chat-form"
+        method="post"
+        action="{{ url_for('send_message') }}"
+    >
+
+        <input
+            type="text"
+            name="message"
+            placeholder="How is the weather?"
+            required
+            autocomplete="off"
+        >
+
+        <input
+            type="hidden"
+            name="latitude"
+            id="latitude"
+        >
+
+        <input
+            type="hidden"
+            name="longitude"
+            id="longitude"
+        >
+
+        <button type="submit">
+            Send
+        </button>
+
+    </form>
+
+    <div
+        class="location-status"
+        id="location-status"
+    >
+        Requesting your location...
+    </div>
+
+</div>
+
+<script>
+    const latitudeInput =
+        document.getElementById("latitude");
+
+    const longitudeInput =
+        document.getElementById("longitude");
+
+    const locationStatus =
+        document.getElementById("location-status");
+
+    const messages =
+        document.getElementById("messages");
+
+    messages.scrollTop = messages.scrollHeight;
+
+    if ("geolocation" in navigator) {
+
+        navigator.geolocation.getCurrentPosition(
+
+            function (position) {
+
+                latitudeInput.value =
+                    position.coords.latitude;
+
+                longitudeInput.value =
+                    position.coords.longitude;
+
+                locationStatus.textContent =
+                    "Location available for local weather questions.";
+            },
+
+            function (error) {
+
+                console.error(
+                    "Location error:",
+                    error
+                );
+
+                locationStatus.textContent =
+                    "Location unavailable. Include a city in your question.";
+            },
+
+            {
+                enableHighAccuracy: false,
+                timeout: 10000,
+                maximumAge: 300000
+            }
+        );
+
+    } else {
+
+        locationStatus.textContent =
+            "Your browser does not support location access.";
+    }
+</script>
+</body>
+</html>
