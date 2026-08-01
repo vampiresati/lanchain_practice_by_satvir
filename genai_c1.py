@@ -14,7 +14,7 @@ def get_location():
 
 # Initialize Gemini Flash 2.5
 llm = ChatGoogleGenerativeAI(
-    model="gemini-3.5-flash",
+    model="gemini-3.1-flash-lite",
     temperature=0.7,
 )
 system_prompt = """
