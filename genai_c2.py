@@ -105,20 +105,12 @@ agent = create_agent(
 
 if __name__ == "__main__":
     user_query1 = input("Enter your query: ")
-
-    # response1 = llm.invoke("How is the weather in Rome?")
-    response1 = agent.invoke(
-        {"messages": [{'role': 'user',
-                       'content': user_query1},{'configurable': {'thread_id': '1'}}]})
-    print(response1['messages'][-1].content)
-
+    config = {"configurable": {"thread_id": "1"}}
+    response1 = agent.invoke({"messages": [{"role": "user","content": user_query1}]},config = config)
+    print(response1["messages"][-1].content)
     user_query2 = input("Enter your query: ")
-
-    # response1 = llm.invoke("How is the weather in Rome?")
-    response1 = agent.invoke(
-        {"messages": [{'role': 'user',
-                       'content': user_query2},{'configurable': {'thread_id': '1'}}]})
-    print(response1['messages'][-1].content)
+    response2 = agent.invoke({"messages": [{"role": "user","content": user_query2}]},config = config)
+    print(response2["messages"][-1].content)
 #
 # print(get_location())
 # print(get_weather("Bathinda"))
