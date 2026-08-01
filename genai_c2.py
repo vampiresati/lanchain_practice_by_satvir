@@ -104,13 +104,14 @@ agent = create_agent(
 )
 
 if __name__ == "__main__":
-    user_query1 = input("Enter your query: ")
-    config = {"configurable": {"thread_id": "1"}}
-    response1 = agent.invoke({"messages": [{"role": "user","content": user_query1}]},config = config)
-    print(response1["messages"][-1].content)
-    user_query2 = input("Enter your query: ")
-    response2 = agent.invoke({"messages": [{"role": "user","content": user_query2}]},config = config)
-    print(response2["messages"][-1].content)
+    while True:
+        user_query = input("Enter your query: ")
+        if user_query.lower() == "exit" or user_query.lower() == "quit" or user_query.lower() == "stop" or user_query.lower() == "bye":
+            break
+        config = {"configurable": {"thread_id": "1"}}
+        response= agent.invoke({"messages": [{"role": "user","content": user_query}]},config = config)
+        print(response["messages"][-1].content)
+
 #
 # print(get_location())
 # print(get_weather("Bathinda"))
