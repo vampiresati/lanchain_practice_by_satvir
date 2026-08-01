@@ -247,6 +247,21 @@
             font-size: 0.95rem;
         }
 
+        .recipe-meta {
+            display: grid;
+            gap: 8px;
+            margin: 0 0 12px;
+        }
+
+        .recipe-meta-line {
+            font-size: 0.9rem;
+            color: var(--accent-dark);
+        }
+
+        .recipe-meta-line strong {
+            color: var(--text);
+        }
+
         .prep-time {
             display: inline-block;
             padding: 7px 10px;
@@ -400,6 +415,18 @@
                             Ingredients:
                             {{ item.ingredients | join(", ") }}
                         </p>
+                        {% if item.recipes %}
+                            <p>
+                                First recipe:
+                                {{ item.recipes[0].name }}
+                                {% if item.recipes[0].quantity %}
+                                    | Qty: {{ item.recipes[0].quantity }}
+                                {% endif %}
+                                {% if item.recipes[0].dish_palace %}
+                                    | Palace: {{ item.recipes[0].dish_palace }}
+                                {% endif %}
+                            </p>
+                        {% endif %}
                     </article>
                 {% endfor %}
             </div>
@@ -460,16 +487,37 @@
         const card = document.createElement("article");
         const title = document.createElement("h3");
         const description = document.createElement("p");
+        const meta = document.createElement("div");
         const prep = document.createElement("span");
 
         card.className = "recipe-item";
         title.textContent = recipe.name;
         description.textContent = recipe.description;
+        meta.className = "recipe-meta";
         prep.className = "prep-time";
         prep.textContent = recipe.prep_time;
 
+        if (recipe.quantity) {
+            const quantity = document.createElement("div");
+
+            quantity.className = "recipe-meta-line";
+            quantity.innerHTML = `<strong>Quantity:</strong> ${recipe.quantity}`;
+            meta.appendChild(quantity);
+        }
+
+        if (recipe.dish_palace) {
+            const palace = document.createElement("div");
+
+            palace.className = "recipe-meta-line";
+            palace.innerHTML = `<strong>Dish Palace:</strong> ${recipe.dish_palace}`;
+            meta.appendChild(palace);
+        }
+
         card.appendChild(title);
         card.appendChild(description);
+        if (meta.childElementCount > 0) {
+            card.appendChild(meta);
+        }
         card.appendChild(prep);
 
         return card;
@@ -486,6 +534,23 @@
 
         article.appendChild(title);
         article.appendChild(summary);
+
+        if (result.recipes.length > 0) {
+            const recipeSummary = document.createElement("p");
+            const firstRecipe = result.recipes[0];
+            const details = [firstRecipe.name];
+
+            if (firstRecipe.quantity) {
+                details.push(`Qty: ${firstRecipe.quantity}`);
+            }
+
+            if (firstRecipe.dish_palace) {
+                details.push(`Palace: ${firstRecipe.dish_palace}`);
+            }
+
+            recipeSummary.textContent = `First recipe: ${details.join(" | ")}`;
+            article.appendChild(recipeSummary);
+        }
 
         if (historyEmpty) {
             historyEmpty.hidden = true;
