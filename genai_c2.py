@@ -2,6 +2,8 @@ import requests
 from langchain_google_genai import ChatGoogleGenerativeAI
 from dotenv import load_dotenv
 from langchain.agents import create_agent
+from langgraph.checkpoint.memory import InMemorySaver
+from uuid import uuid4
 import os
 
 load_dotenv()
@@ -97,18 +99,26 @@ YOUR WORKFLOW:
 agent = create_agent(
     model=llm,
     tools=[get_weather, get_location],
-    system_prompt=system_prompt
+    system_prompt=system_prompt,
+    checkpointer=InMemorySaver(),
 )
 
 if __name__ == "__main__":
-    user_query = input("Enter your query: ")
+    user_query1 = input("Enter your query: ")
 
     # response1 = llm.invoke("How is the weather in Rome?")
     response1 = agent.invoke(
         {"messages": [{'role': 'user',
-                       'content': user_query}]})
+                       'content': user_query1},{'configurable': {'thread_id': '1'}}]})
     print(response1['messages'][-1].content)
 
+    user_query2 = input("Enter your query: ")
+
+    # response1 = llm.invoke("How is the weather in Rome?")
+    response1 = agent.invoke(
+        {"messages": [{'role': 'user',
+                       'content': user_query2},{'configurable': {'thread_id': '1'}}]})
+    print(response1['messages'][-1].content)
 #
 # print(get_location())
 # print(get_weather("Bathinda"))
