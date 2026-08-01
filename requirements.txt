@@ -3,3 +3,14 @@ langchain
 langchain-google-genai
 python-dotenv
 requests
+fastapi
+uvicorn[standard]
+jinja2
+python-multipart
+itsdangerous
+requests
+python-dotenv
+langchain
+langgraph
+langchain-google-genai
+langgraph-checkpoint-sqlite
