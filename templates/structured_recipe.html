@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+    <title>Recipe Vision</title>
+
+    <style>
+        :root {
+            --bg-top: #fff4d9;
+            --bg-bottom: #f3dfbf;
+            --panel: rgba(255, 250, 240, 0.88);
+            --panel-border: rgba(124, 58, 20, 0.14);
+            --text: #2d1606;
+            --muted: #7a5b43;
+            --accent: #c75b12;
+            --accent-dark: #8f3f08;
+            --card: #fffdf8;
+            --user-shadow: 0 18px 40px rgba(130, 71, 18, 0.15);
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            font-family: Georgia, "Times New Roman", serif;
+            color: var(--text);
+            background:
+                radial-gradient(circle at top left, rgba(255, 255, 255, 0.65), transparent 32%),
+                linear-gradient(160deg, var(--bg-top), var(--bg-bottom));
+        }
+
+        .page-shell {
+            width: min(1120px, calc(100% - 32px));
+            margin: 32px auto;
+            display: grid;
+            grid-template-columns: minmax(0, 1.05fr) minmax(300px, 0.95fr);
+            gap: 24px;
+        }
+
+        .hero,
+        .history-panel {
+            background: var(--panel);
+            border: 1px solid var(--panel-border);
+            border-radius: 24px;
+            box-shadow: var(--user-shadow);
+            backdrop-filter: blur(10px);
+        }
+
+        .hero {
+            padding: 28px;
+        }
+
+        .eyebrow {
+            display: inline-block;
+            margin-bottom: 12px;
+            padding: 8px 12px;
+            border-radius: 999px;
+            font-size: 12px;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: var(--accent-dark);
+            background: rgba(199, 91, 18, 0.12);
+        }
+
+        h1 {
+            margin: 0 0 12px;
+            font-size: clamp(2.2rem, 5vw, 4.3rem);
+            line-height: 0.96;
+        }
+
+        .hero-copy {
+            max-width: 620px;
+            margin: 0 0 24px;
+            color: var(--muted);
+            font-size: 1.02rem;
+            line-height: 1.7;
+        }
+
+        .upload-form {
+            display: grid;
+            gap: 18px;
+        }
+
+        .upload-box {
+            position: relative;
+            display: grid;
+            place-items: center;
+            min-height: 240px;
+            padding: 22px;
+            border: 2px dashed rgba(143, 63, 8, 0.24);
+            border-radius: 22px;
+            background:
+                linear-gradient(135deg, rgba(255, 255, 255, 0.92), rgba(255, 244, 217, 0.9));
+            text-align: center;
+            overflow: hidden;
+        }
+
+        .upload-box.has-image {
+            padding: 0;
+            border-style: solid;
+        }
+
+        .upload-box input[type="file"] {
+            position: absolute;
+            inset: 0;
+            opacity: 0;
+            cursor: pointer;
+        }
+
+        .upload-text {
+            padding: 12px;
+        }
+
+        .upload-text strong {
+            display: block;
+            margin-bottom: 10px;
+            font-size: 1.3rem;
+        }
+
+        .upload-text span {
+            color: var(--muted);
+            line-height: 1.6;
+        }
+
+        .preview-image {
+            display: none;
+            width: 100%;
+            height: 100%;
+            min-height: 240px;
+            object-fit: cover;
+        }
+
+        .actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        button,
+        .clear-link {
+            appearance: none;
+            border: 0;
+            border-radius: 999px;
+            padding: 14px 20px;
+            font-size: 15px;
+            cursor: pointer;
+            text-decoration: none;
+        }
+
+        .primary-action {
+            color: #fff8f1;
+            background: linear-gradient(135deg, var(--accent), var(--accent-dark));
+        }
+
+        .primary-action:disabled {
+            opacity: 0.65;
+            cursor: wait;
+        }
+
+        .clear-link {
+            color: var(--accent-dark);
+            background: rgba(143, 63, 8, 0.08);
+        }
+
+        .status {
+            min-height: 24px;
+            color: var(--muted);
+            font-size: 0.95rem;
+        }
+
+        .result-card {
+            display: none;
+            margin-top: 26px;
+            padding: 24px;
+            border-radius: 22px;
+            background: var(--card);
+            border: 1px solid rgba(124, 58, 20, 0.1);
+        }
+
+        .result-card.visible {
+            display: block;
+            animation: fade-up 280ms ease;
+        }
+
+        .result-head {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 18px;
+        }
+
+        .result-head h2,
+        .history-panel h2 {
+            margin: 0;
+            font-size: 1.45rem;
+        }
+
+        .tag-list,
+        .recipe-grid {
+            display: grid;
+            gap: 12px;
+        }
+
+        .tag-list {
+            grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+            margin-bottom: 22px;
+        }
+
+        .ingredient-tag {
+            padding: 12px 14px;
+            border-radius: 16px;
+            background: #fff0df;
+            color: var(--accent-dark);
+            text-align: center;
+            font-size: 0.98rem;
+        }
+
+        .recipe-grid {
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        }
+
+        .recipe-item {
+            padding: 18px;
+            border-radius: 18px;
+            background: linear-gradient(180deg, #fffef9, #fff7ea);
+            border: 1px solid rgba(143, 63, 8, 0.08);
+        }
+
+        .recipe-item h3 {
+            margin: 0 0 10px;
+            font-size: 1.08rem;
+        }
+
+        .recipe-item p {
+            margin: 0 0 10px;
+            color: var(--muted);
+            line-height: 1.6;
+            font-size: 0.95rem;
+        }
+
+        .prep-time {
+            display: inline-block;
+            padding: 7px 10px;
+            border-radius: 999px;
+            font-size: 12px;
+            letter-spacing: 0.04em;
+            background: rgba(199, 91, 18, 0.12);
+            color: var(--accent-dark);
+        }
+
+        .history-panel {
+            padding: 24px;
+        }
+
+        .history-list {
+            display: grid;
+            gap: 16px;
+            margin-top: 18px;
+        }
+
+        .history-item {
+            padding: 18px;
+            border-radius: 18px;
+            background: rgba(255, 255, 255, 0.62);
+            border: 1px solid rgba(124, 58, 20, 0.1);
+        }
+
+        .history-item strong {
+            display: block;
+            margin-bottom: 10px;
+            font-size: 1rem;
+        }
+
+        .history-item p {
+            margin: 0;
+            color: var(--muted);
+            line-height: 1.6;
+            font-size: 0.94rem;
+        }
+
+        .history-empty {
+            margin-top: 18px;
+            color: var(--muted);
+            line-height: 1.7;
+        }
+
+        @keyframes fade-up {
+            from {
+                opacity: 0;
+                transform: translateY(12px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @media (max-width: 920px) {
+            .page-shell {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+
+<body>
+<div class="page-shell">
+    <section class="hero">
+        <div class="eyebrow">Structured Output Demo</div>
+        <h1>Turn ingredients into a recipe lineup.</h1>
+        <p class="hero-copy">
+            Upload a food or ingredient image and get a structured response:
+            detected ingredients plus three recipe ideas with short descriptions
+            and prep times.
+        </p>
+
+        <form
+            class="upload-form"
+            id="upload-form"
+            method="post"
+            action="{{ url_for('analyze_image') }}"
+            enctype="multipart/form-data"
+        >
+            <label class="upload-box" id="upload-box">
+                <input
+                    type="file"
+                    id="image-input"
+                    name="image"
+                    accept="image/*"
+                    required
+                >
+
+                <img
+                    class="preview-image"
+                    id="preview-image"
+                    alt="Uploaded preview"
+                >
+
+                <div class="upload-text" id="upload-text">
+                    <strong>Select an ingredient image</strong>
+                    <span>
+                        Drag, drop, or click to choose a photo of vegetables,
+                        groceries, cooked food, or pantry ingredients.
+                    </span>
+                </div>
+            </label>
+
+            <div class="actions">
+                <button
+                    class="primary-action"
+                    id="submit-button"
+                    type="submit"
+                >
+                    Analyze Image
+                </button>
+
+                <a
+                    class="clear-link"
+                    href="{{ url_for('clear_results') }}"
+                >
+                    Clear History
+                </a>
+            </div>
+
+            <div class="status" id="status-text">
+                Waiting for an image.
+            </div>
+        </form>
+
+        <section class="result-card" id="result-card">
+            <div class="result-head">
+                <h2 id="result-title">Latest Analysis</h2>
+                <span class="prep-time">Structured JSON response</span>
+            </div>
+
+            <div class="tag-list" id="ingredients-list"></div>
+            <div class="recipe-grid" id="recipes-list"></div>
+        </section>
+    </section>
+
+    <aside class="history-panel">
+        <h2>Recent Analyses</h2>
+
+        {% if history %}
+            <div class="history-list" id="history-list">
+                {% for item in history %}
+                    <article class="history-item">
+                        <strong>{{ item.filename }}</strong>
+                        <p>
+                            Ingredients:
+                            {{ item.ingredients | join(", ") }}
+                        </p>
+                    </article>
+                {% endfor %}
+            </div>
+        {% else %}
+            <p class="history-empty" id="history-empty">
+                No image analyses yet. Your recent uploads will appear here.
+            </p>
+            <div class="history-list" id="history-list" hidden></div>
+        {% endif %}
+    </aside>
+</div>
+
+<script>
+    const uploadForm = document.getElementById("upload-form");
+    const imageInput = document.getElementById("image-input");
+    const uploadBox = document.getElementById("upload-box");
+    const uploadText = document.getElementById("upload-text");
+    const previewImage = document.getElementById("preview-image");
+    const submitButton = document.getElementById("submit-button");
+    const statusText = document.getElementById("status-text");
+    const resultCard = document.getElementById("result-card");
+    const resultTitle = document.getElementById("result-title");
+    const ingredientsList = document.getElementById("ingredients-list");
+    const recipesList = document.getElementById("recipes-list");
+    const historyList = document.getElementById("history-list");
+    const historyEmpty = document.getElementById("history-empty");
+
+    function resetPreview() {
+        uploadBox.classList.remove("has-image");
+        previewImage.style.display = "none";
+        previewImage.removeAttribute("src");
+        uploadText.style.display = "block";
+        statusText.textContent = "Waiting for an image.";
+    }
+
+    function renderPreview(file) {
+        const reader = new FileReader();
+
+        reader.onload = function (event) {
+            previewImage.src = event.target.result;
+            previewImage.style.display = "block";
+            uploadText.style.display = "none";
+            uploadBox.classList.add("has-image");
+            statusText.textContent = `Ready to analyze ${file.name}.`;
+        };
+
+        reader.readAsDataURL(file);
+    }
+
+    function createIngredientTag(text) {
+        const item = document.createElement("div");
+        item.className = "ingredient-tag";
+        item.textContent = text;
+        return item;
+    }
+
+    function createRecipeCard(recipe) {
+        const card = document.createElement("article");
+        const title = document.createElement("h3");
+        const description = document.createElement("p");
+        const prep = document.createElement("span");
+
+        card.className = "recipe-item";
+        title.textContent = recipe.name;
+        description.textContent = recipe.description;
+        prep.className = "prep-time";
+        prep.textContent = recipe.prep_time;
+
+        card.appendChild(title);
+        card.appendChild(description);
+        card.appendChild(prep);
+
+        return card;
+    }
+
+    function addHistoryItem(result) {
+        const article = document.createElement("article");
+        const title = document.createElement("strong");
+        const summary = document.createElement("p");
+
+        article.className = "history-item";
+        title.textContent = result.filename;
+        summary.textContent = `Ingredients: ${result.ingredients.join(", ")}`;
+
+        article.appendChild(title);
+        article.appendChild(summary);
+
+        if (historyEmpty) {
+            historyEmpty.hidden = true;
+        }
+
+        historyList.hidden = false;
+        historyList.prepend(article);
+
+        while (historyList.children.length > 6) {
+            historyList.removeChild(historyList.lastElementChild);
+        }
+    }
+
+    function renderResult(result) {
+        resultTitle.textContent = result.filename;
+        ingredientsList.innerHTML = "";
+        recipesList.innerHTML = "";
+
+        result.ingredients.forEach(function (ingredient) {
+            ingredientsList.appendChild(createIngredientTag(ingredient));
+        });
+
+        result.recipes.forEach(function (recipe) {
+            recipesList.appendChild(createRecipeCard(recipe));
+        });
+
+        resultCard.classList.add("visible");
+        addHistoryItem(result);
+    }
+
+    imageInput.addEventListener("change", function () {
+        const file = imageInput.files[0];
+
+        if (!file) {
+            resetPreview();
+            return;
+        }
+
+        renderPreview(file);
+    });
+
+    uploadForm.addEventListener("submit", async function (event) {
+        event.preventDefault();
+
+        const file = imageInput.files[0];
+
+        if (!file) {
+            statusText.textContent = "Choose an image before analyzing.";
+            return;
+        }
+
+        const formData = new FormData(uploadForm);
+
+        submitButton.disabled = true;
+        submitButton.textContent = "Analyzing...";
+        statusText.textContent = "Reading ingredients and building recipes...";
+
+        try {
+            const response = await fetch(uploadForm.action, {
+                method: "POST",
+                body: formData,
+                headers: {
+                    "X-Requested-With": "XMLHttpRequest"
+                }
+            });
+
+            const data = await response.json();
+
+            if (!response.ok || !data.success) {
+                statusText.textContent =
+                    data.error || "The image could not be analyzed.";
+                return;
+            }
+
+            renderResult(data.result);
+            statusText.textContent = "Analysis complete.";
+        } catch (error) {
+            console.error("Recipe analysis error:", error);
+            statusText.textContent =
+                "Network error while analyzing the image.";
+        } finally {
+            submitButton.disabled = false;
+            submitButton.textContent = "Analyze Image";
+        }
+    });
+</script>
+</body>
+</html>
