@@ -7,7 +7,7 @@ from uuid import uuid4
 import os
 
 load_dotenv()
-SUPABASE_DB_URI = os.getenv("SUPABASE_DB_URI")
+POSTGRES_URI = os.getenv("POSTGRES_URI")
 
 
 def get_weather(city: str):
@@ -100,7 +100,7 @@ YOUR WORKFLOW:
 
 
 if __name__ == "__main__":
-    with PostgresSaver.from_conn_string(SUPABASE_DB_URI) as checkpointsaver:
+    with PostgresSaver.from_conn_string(POSTGRES_URI) as checkpointsaver:
         checkpointsaver.setup()
         agent = create_agent(
             model=llm,
