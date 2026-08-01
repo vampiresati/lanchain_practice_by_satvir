@@ -105,12 +105,52 @@
             color: white;
             background: #2563eb;
             cursor: pointer;
+            transition: opacity 0.2s ease;
+        }
+
+        .chat-form button:disabled {
+            opacity: 0.65;
+            cursor: wait;
         }
 
         .location-status {
             padding: 0 15px 12px;
             color: #6b7280;
             font-size: 13px;
+        }
+
+        .typing {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .typing span {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #6b7280;
+            animation: pulse 1s infinite ease-in-out;
+        }
+
+        .typing span:nth-child(2) {
+            animation-delay: 0.15s;
+        }
+
+        .typing span:nth-child(3) {
+            animation-delay: 0.3s;
+        }
+
+        @keyframes pulse {
+            0%, 80%, 100% {
+                opacity: 0.35;
+                transform: scale(0.9);
+            }
+
+            40% {
+                opacity: 1;
+                transform: scale(1);
+            }
         }
     </style>
 </head>
@@ -153,12 +193,14 @@
 
     <form
         class="chat-form"
+        id="chat-form"
         method="post"
         action="{{ url_for('send_message') }}"
     >
 
         <input
             type="text"
+            id="message-input"
             name="message"
             placeholder="How is the weather?"
             required
@@ -205,7 +247,47 @@
     const messages =
         document.getElementById("messages");
 
+    const chatForm =
+        document.getElementById("chat-form");
+
+    const messageInput =
+        document.getElementById("message-input");
+
+    const submitButton =
+        chatForm.querySelector('button[type="submit"]');
+
     messages.scrollTop = messages.scrollHeight;
+
+    function scrollMessagesToBottom() {
+        messages.scrollTop = messages.scrollHeight;
+    }
+
+    function appendMessage(sender, text) {
+        const messageElement = document.createElement("div");
+
+        messageElement.className = `message ${sender}`;
+        messageElement.textContent = text;
+
+        messages.appendChild(messageElement);
+        scrollMessagesToBottom();
+
+        return messageElement;
+    }
+
+    function createTypingIndicator() {
+        const wrapper = document.createElement("div");
+        const dots = document.createElement("div");
+
+        wrapper.className = "message agent";
+        dots.className = "typing";
+        dots.innerHTML = "<span></span><span></span><span></span>";
+
+        wrapper.appendChild(dots);
+        messages.appendChild(wrapper);
+        scrollMessagesToBottom();
+
+        return wrapper;
+    }
 
     if ("geolocation" in navigator) {
 
@@ -246,6 +328,63 @@
         locationStatus.textContent =
             "Your browser does not support location access.";
     }
+
+    chatForm.addEventListener("submit", async function (event) {
+        event.preventDefault();
+
+        const userMessage = messageInput.value.trim();
+
+        if (!userMessage) {
+            return;
+        }
+
+        appendMessage("user", userMessage);
+
+        const typingIndicator = createTypingIndicator();
+        const formData = new FormData(chatForm);
+
+        submitButton.disabled = true;
+        submitButton.textContent = "Thinking...";
+        messageInput.value = "";
+        messageInput.focus();
+
+        try {
+            const response = await fetch(chatForm.action, {
+                method: "POST",
+                body: formData,
+                headers: {
+                    "X-Requested-With": "XMLHttpRequest"
+                }
+            });
+
+            const data = await response.json();
+
+            typingIndicator.remove();
+
+            if (!response.ok || !data.success) {
+                appendMessage(
+                    "agent",
+                    data.error ||
+                    "Sorry, I encountered an error while processing your request."
+                );
+                return;
+            }
+
+            appendMessage("agent", data.agent_message);
+
+        } catch (error) {
+            console.error("Chat submit error:", error);
+            typingIndicator.remove();
+
+            appendMessage(
+                "agent",
+                "Sorry, I encountered a network error while processing your request."
+            );
+        } finally {
+            submitButton.disabled = false;
+            submitButton.textContent = "Send";
+        }
+    });
 </script>
 </body>
 </html>

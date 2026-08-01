@@ -6,7 +6,15 @@ from typing import Any
 
 import requests
 from dotenv import load_dotenv
-from flask import Flask, redirect, render_template, request, session, url_for
+from flask import (
+    Flask,
+    jsonify,
+    redirect,
+    render_template,
+    request,
+    session,
+    url_for,
+)
 from langchain.agents import create_agent
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langgraph.checkpoint.sqlite import SqliteSaver
@@ -306,6 +314,10 @@ def initialize_session() -> None:
         session["messages"] = []
 
 
+def is_async_request() -> bool:
+    return request.headers.get("X-Requested-With") == "XMLHttpRequest"
+
+
 def extract_ai_content(content: Any) -> str:
     """
     Convert Gemini/LangChain content into displayable text.
@@ -350,6 +362,14 @@ def send_message():
     longitude = request.form.get("longitude")
 
     if not user_message:
+        if is_async_request():
+            return jsonify(
+                {
+                    "success": False,
+                    "error": "Please enter a message.",
+                }
+            ), 400
+
         return redirect(url_for("home"))
 
     messages = list(session.get("messages", []))
@@ -438,6 +458,15 @@ def send_message():
 
     session["messages"] = messages
     session.modified = True
+
+    if is_async_request():
+        return jsonify(
+            {
+                "success": True,
+                "user_message": user_message,
+                "agent_message": ai_response,
+            }
+        )
 
     return redirect(url_for("home"))
 
