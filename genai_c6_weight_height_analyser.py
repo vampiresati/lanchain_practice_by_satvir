@@ -22,8 +22,11 @@ class PersonResponse(BaseModel):
     age: int = Field(description="Estimated age of the person in years")
     height: float = Field(description="Estimated height of the person in meters")
     weight: float = Field(description="Estimated weight of the person in kilograms")
+    ideal_weight: float = Field(description="Suggested ideal target weight of the person in kilograms")
     gender: str = Field(description="Estimated gender presentation of the person")
-    diet_suggestion: str = Field(description="Short healthy diet suggestion for the person")
+    diet_plan: str = Field(
+        description="Short practical diet plan to help the person move toward the ideal weight"
+    )
 
 
 SYSTEM_PROMPT = """
@@ -31,9 +34,10 @@ You are a helpful health and fitness assistant.
 Analyze the two uploaded images of the same person and return:
 1. Estimated height in meters.
 2. Estimated weight in kilograms.
-3. Estimated age in years.
-4. Estimated gender presentation.
-5. A short healthy diet suggestion based on the estimated body profile.
+3. Suggested ideal target weight in kilograms.
+4. Estimated age in years.
+5. Estimated gender presentation.
+6. A short practical diet plan to help the person move toward the ideal weight.
 
 Use both images together to produce one best combined estimate for the same person.
 Only return the structured response fields.
@@ -86,6 +90,13 @@ def encode_uploaded_image(uploaded_file: Any, label: str) -> tuple[str, str]:
         raise ValueError(f"{label.capitalize()} is empty.")
 
     return base64.b64encode(image_bytes).decode("utf-8"), mime_type
+
+
+def meters_to_feet_inches(height_meters: float) -> str:
+    total_inches = round(height_meters * 39.3701)
+    feet = total_inches // 12
+    inches = total_inches % 12
+    return f"{feet} ft {inches} in"
 
 
 def invoke_agent(
@@ -147,9 +158,11 @@ def build_person_result(
         "label": f"{first_filename} and {second_filename}",
         "age": result.age,
         "height": result.height,
+        "height_feet_inches": meters_to_feet_inches(result.height),
         "weight": result.weight,
+        "ideal_weight": result.ideal_weight,
         "gender": result.gender,
-        "diet_suggestion": result.diet_suggestion,
+        "diet_plan": result.diet_plan,
     }
 
 

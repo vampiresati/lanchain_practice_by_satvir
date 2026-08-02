@@ -324,7 +324,7 @@
         <p class="hero-copy">
             Choose two photos of the same person, then click analyze. The app
             uses both images together and estimates one combined age, height,
-            weight, gender, and a short diet suggestion.
+            weight, ideal weight, gender, and a diet plan to help reach that target.
         </p>
 
         <form
@@ -423,7 +423,9 @@
                                 <h3>{{ item.person.label }}</h3>
                                 <p>Age: {{ item.person.age }}</p>
                                 <p>Height: {{ item.person.height }} m</p>
+                                <p>Height: {{ item.person.height_feet_inches }}</p>
                                 <p>Weight: {{ item.person.weight }} kg</p>
+                                <p>Ideal Weight: {{ item.person.ideal_weight }} kg</p>
                                 <p>Gender: {{ item.person.gender }}</p>
                             </section>
                         </div>
@@ -523,9 +525,11 @@
 
         metrics.appendChild(createMetric("Age", person.age));
         metrics.appendChild(createMetric("Height", `${person.height} m`));
+        metrics.appendChild(createMetric("Height", person.height_feet_inches));
         metrics.appendChild(createMetric("Weight", `${person.weight} kg`));
+        metrics.appendChild(createMetric("Ideal Weight", `${person.ideal_weight} kg`));
         metrics.appendChild(createMetric("Gender", person.gender));
-        diet.textContent = `Diet suggestion: ${person.diet_suggestion}`;
+        diet.textContent = `Diet plan: ${person.diet_plan}`;
 
         card.appendChild(title);
         card.appendChild(metrics);
@@ -554,13 +558,19 @@
         heading.textContent = result.person.label;
         age.textContent = `Age: ${result.person.age}`;
         height.textContent = `Height: ${result.person.height} m`;
+        const heightImperial = document.createElement("p");
         weight.textContent = `Weight: ${result.person.weight} kg`;
+        const idealWeight = document.createElement("p");
         gender.textContent = `Gender: ${result.person.gender}`;
+        heightImperial.textContent = `Height: ${result.person.height_feet_inches}`;
+        idealWeight.textContent = `Ideal Weight: ${result.person.ideal_weight} kg`;
 
         section.appendChild(heading);
         section.appendChild(age);
         section.appendChild(height);
+        section.appendChild(heightImperial);
         section.appendChild(weight);
+        section.appendChild(idealWeight);
         section.appendChild(gender);
         people.appendChild(section);
 
