@@ -2,9 +2,9 @@ import os
 from typing import Optional
 
 from langchain.agents import create_agent
-from speech.local_text_to_voice import speak, tts_engine
-from speech.local_recorder import record_audio, sd
-from speech.local_voice_to_text import WHISPER_MODEL_NAME, transcribe
+from local_text_to_voice import speak, tts_engine
+from local_recorder import record_audio, sd
+from local_voice_to_text import WHISPER_MODEL_NAME, transcribe
 
 # ---------------------------------------------------------
 # Configuration
