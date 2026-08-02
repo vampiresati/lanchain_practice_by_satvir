@@ -4,10 +4,14 @@ from google.genai import types
 from langchain_google_genai import ChatGoogleGenerativeAI
 from dotenv import load_dotenv
 from langchain.agents import create_agent
-from speech.local_recorder import record_audio, sd
-from speech.local_text_to_voice import speak
-from speech.local_voice_to_text import transcribe
+from local_recorder import record_audio, sd
+from local_text_to_voice import speak
+from local_voice_to_text import transcribe
 
+
+import os
+
+load_dotenv()
 llm = ChatGoogleGenerativeAI(
     model="gemini-3.1-flash-lite",
     temperature=0.7,
