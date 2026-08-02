@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+    <title>Weather Assistant</title>
+</head>
+
+<body>
+<div class="chat-container">
+    <div class="header">
+        <h1>Weather Assistant</h1>
+        <a class="clear-button" href="/clear">Clear</a>
+    </div>
+
+    <div class="messages" id="messages">
+        {% if messages %}
+            {% for message in messages %}
+                <div class="message {{ message.sender }}">
+                    {{ message.text }}
+                </div>
+            {% endfor %}
+        {% else %}
+            <div class="message agent">
+                Hello! Ask me about the weather in any city.
+            </div>
+        {% endif %}
+    </div>
+
+    <form
+        class="chat-form"
+        method="post"
+        action="/send"
+        id="chat-form"
+    >
+        <input
+            type="text"
+            id="message-input"
+            name="message"
+            placeholder="How is the weather?"
+            required
+            autocomplete="off"
+        >
+
+        <input type="hidden" name="latitude" id="latitude">
+        <input type="hidden" name="longitude" id="longitude">
+
+        <button type="submit">Send</button>
+    </form>
+
+    <div class="location-status" id="location-status">
+        Requesting your location...
+    </div>
+</div>
+
+
+</body>
+</html>
