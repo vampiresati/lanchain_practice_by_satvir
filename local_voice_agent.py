@@ -3,18 +3,29 @@ import tempfile
 import time
 from typing import Optional
 
-import pyttsx3
-import requests
-import sounddevice as sd
 import soundfile as sf
 from faster_whisper import WhisperModel
+from langchain.agents import create_agent
+
+try:
+    import sounddevice as sd
+    SOUNDDEVICE_IMPORT_ERROR = None
+except OSError as error:
+    sd = None
+    SOUNDDEVICE_IMPORT_ERROR = error
+
+try:
+    import pyttsx3
+    PYTTSX3_IMPORT_ERROR = None
+except Exception as error:
+    pyttsx3 = None
+    PYTTSX3_IMPORT_ERROR = error
 
 
 # ---------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------
 
-OLLAMA_URL = "http://localhost:11434/api/chat"
 OLLAMA_MODEL = "qwen3:4b"
 
 SAMPLE_RATE = 16_000
@@ -42,9 +53,18 @@ whisper_model = WhisperModel(
 
 print("Initializing local text-to-speech...")
 
-tts_engine = pyttsx3.init()
-tts_engine.setProperty("rate", 175)
-tts_engine.setProperty("volume", 1.0)
+tts_engine = None
+if pyttsx3 is not None:
+    tts_engine = pyttsx3.init()
+    tts_engine.setProperty("rate", 175)
+    tts_engine.setProperty("volume", 1.0)
+
+print("Creating LangChain Ollama agent...")
+
+agent = create_agent(
+    model=f"ollama:{OLLAMA_MODEL}",
+    tools=[],
+)
 
 
 # Conversation memory for Ollama
@@ -67,6 +87,11 @@ def record_audio() -> str:
     Recording stops when the user presses Enter or when MAX_DURATION
     seconds have elapsed.
     """
+
+    if sd is None:
+        raise RuntimeError(
+            "Microphone recording is unavailable because PortAudio is not installed."
+        ) from SOUNDDEVICE_IMPORT_ERROR
 
     input("\nPress Enter to start recording...")
 
@@ -150,7 +175,7 @@ def transcribe(audio_path: str) -> str:
 
 def ask_ollama(user_text: str) -> str:
     """
-    Send the transcribed message to the local Ollama API.
+    Send the transcribed message to the LangChain Ollama agent.
     """
 
     conversation.append(
@@ -160,52 +185,30 @@ def ask_ollama(user_text: str) -> str:
         }
     )
 
-    payload = {
-        "model": OLLAMA_MODEL,
-        "messages": conversation,
-        "stream": False,
-        "options": {
-            "temperature": 0.7,
-            "num_predict": 200,
-        },
-    }
-
     try:
-        response = requests.post(
-            OLLAMA_URL,
-            json=payload,
-            timeout=180,
-        )
-
-        response.raise_for_status()
-
-    except requests.ConnectionError as error:
+        response = agent.invoke({"messages": conversation})
+    except Exception as error:
         conversation.pop()
-
         raise RuntimeError(
-            "Cannot connect to Ollama. Start it with:\n"
-            "ollama serve"
+            "LangChain could not get a response from Ollama. "
+            "Make sure Ollama is running and the model is available:\n"
+            f"  ollama serve\n"
+            f"  ollama pull {OLLAMA_MODEL}"
         ) from error
 
-    except requests.HTTPError as error:
-        conversation.pop()
+    reply_message = response["messages"][-1]
+    reply_content = getattr(reply_message, "content", "")
 
-        try:
-            error_details = response.json()
-        except ValueError:
-            error_details = response.text
-
-        raise RuntimeError(
-            f"Ollama returned an error: {error_details}"
-        ) from error
-
-    result = response.json()
-
-    reply = (
-        result.get("message", {})
-        .get("content", "")
-        .strip()
-    )
+    if isinstance(reply_content, str):
+        reply = reply_content.strip()
+    elif isinstance(reply_content, list):
+        reply = " ".join(
+            part.get("text", "").strip()
+            for part in reply_content
+            if isinstance(part, dict) and part.get("text")
+        ).strip()
+    else:
+        reply = str(reply_content).strip()
 
     if not reply:
         conversation.pop()
@@ -232,18 +235,15 @@ def speak(text: str) -> None:
     if not text:
         return
 
+    if tts_engine is None:
+        print(
+            "Text-to-speech is unavailable on this machine. "
+            "Response will be shown as text only."
+        )
+        return
+
     tts_engine.say(text)
     tts_engine.runAndWait()
-
-
-def get_typed_message() -> Optional[str]:
-    """
-    Read a message from the keyboard.
-    """
-
-    message = input("You: ").strip()
-
-    return message or None
 
 
 def main() -> None:
@@ -252,6 +252,10 @@ def main() -> None:
     print(f"Ollama model: {OLLAMA_MODEL}")
     print(f"Whisper model: {WHISPER_MODEL_NAME}")
     print("Everything runs locally.")
+    if sd is None:
+        print("Microphone input disabled: PortAudio is not installed.")
+    if tts_engine is None:
+        print("Text-to-speech disabled: pyttsx3 engine is unavailable.")
     print()
     print("Commands:")
     print("  Press Enter  -> record your voice")
