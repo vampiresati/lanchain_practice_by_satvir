@@ -28,13 +28,14 @@ class PersonResponse(BaseModel):
 
 SYSTEM_PROMPT = """
 You are a helpful health and fitness assistant.
-Analyze the uploaded person image and return:
+Analyze the two uploaded images of the same person and return:
 1. Estimated height in meters.
 2. Estimated weight in kilograms.
 3. Estimated age in years.
 4. Estimated gender presentation.
 5. A short healthy diet suggestion based on the estimated body profile.
 
+Use both images together to produce one best combined estimate for the same person.
 Only return the structured response fields.
 """
 
@@ -87,7 +88,13 @@ def encode_uploaded_image(uploaded_file: Any, label: str) -> tuple[str, str]:
     return base64.b64encode(image_bytes).decode("utf-8"), mime_type
 
 
-def invoke_agent(image_base64: str, mime_type: str, thread_id: str) -> PersonResponse:
+def invoke_agent(
+    first_image_base64: str,
+    first_mime_type: str,
+    second_image_base64: str,
+    second_mime_type: str,
+    thread_id: str,
+) -> PersonResponse:
     message = [
         {"role": "system", "content": SYSTEM_PROMPT},
         {
@@ -95,12 +102,20 @@ def invoke_agent(image_base64: str, mime_type: str, thread_id: str) -> PersonRes
             "content": [
                 {
                     "type": "text",
-                    "text": "Estimate this person's body profile from the image.",
+                    "text": (
+                        "These are two images of the same person. "
+                        "Use both images together and estimate one combined body profile."
+                    ),
                 },
                 {
                     "type": "image",
-                    "base64": image_base64,
-                    "mime_type": mime_type,
+                    "base64": first_image_base64,
+                    "mime_type": first_mime_type,
+                },
+                {
+                    "type": "image",
+                    "base64": second_image_base64,
+                    "mime_type": second_mime_type,
                 },
             ],
         },
@@ -122,9 +137,14 @@ def invoke_agent(image_base64: str, mime_type: str, thread_id: str) -> PersonRes
     raise ValueError("The model did not return a structured person analysis.")
 
 
-def build_person_result(filename: str, result: PersonResponse) -> dict[str, Any]:
+def build_person_result(
+    first_filename: str,
+    second_filename: str,
+    result: PersonResponse,
+) -> dict[str, Any]:
     return {
-        "filename": filename,
+        "filenames": [first_filename, second_filename],
+        "label": f"{first_filename} and {second_filename}",
         "age": result.age,
         "height": result.height,
         "weight": result.weight,
@@ -133,10 +153,10 @@ def build_person_result(filename: str, result: PersonResponse) -> dict[str, Any]
     }
 
 
-def build_history_entry(first_person: dict[str, Any], second_person: dict[str, Any]) -> dict[str, Any]:
+def build_history_entry(person: dict[str, Any]) -> dict[str, Any]:
     return {
-        "title": f"{first_person['filename']} and {second_person['filename']}",
-        "people": [first_person, second_person],
+        "title": f"Same person analysis: {person['label']}",
+        "person": person,
     }
 
 
@@ -160,16 +180,19 @@ def analyze_image():
         image_1_base64, image_1_mime = encode_uploaded_image(uploaded_file_1, "the first image")
         image_2_base64, image_2_mime = encode_uploaded_image(uploaded_file_2, "the second image")
 
-        first_result = build_person_result(
+        combined_result = build_person_result(
             uploaded_file_1.filename,
-            invoke_agent(image_1_base64, image_1_mime, session["thread_id"]),
-        )
-        second_result = build_person_result(
             uploaded_file_2.filename,
-            invoke_agent(image_2_base64, image_2_mime, session["thread_id"]),
+            invoke_agent(
+                image_1_base64,
+                image_1_mime,
+                image_2_base64,
+                image_2_mime,
+                session["thread_id"],
+            ),
         )
 
-        history_entry = build_history_entry(first_result, second_result)
+        history_entry = build_history_entry(combined_result)
         history = list(session.get("analysis_history", []))
         history.insert(0, history_entry)
         session["analysis_history"] = history[:6]

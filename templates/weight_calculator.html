@@ -320,11 +320,11 @@
 <div class="page-shell">
     <section class="hero">
         <div class="eyebrow">GenAI Vision Demo</div>
-        <h1>Upload two person images and analyze both together.</h1>
+        <h1>Upload two images of the same person and analyze once.</h1>
         <p class="hero-copy">
-            Choose two person photos, then click analyze. The app estimates
-            age, height, weight, gender, and gives a short diet suggestion for
-            each uploaded image.
+            Choose two photos of the same person, then click analyze. The app
+            uses both images together and estimates one combined age, height,
+            weight, gender, and a short diet suggestion.
         </p>
 
         <form
@@ -373,7 +373,7 @@
 
                     <div class="upload-text" id="upload-text-2">
                         <strong>Select second person image</strong>
-                        <span>Upload another person image to compare results.</span>
+                        <span>Upload another photo of the same person.</span>
                     </div>
                 </label>
             </div>
@@ -403,7 +403,7 @@
         <section class="result-card" id="result-card">
             <div class="result-head">
                 <h2 id="result-title">Latest Analysis</h2>
-                <span class="pill">Two-image person analysis</span>
+                <span class="pill">Same-person two-image analysis</span>
             </div>
 
             <div class="result-grid" id="result-grid"></div>
@@ -419,22 +419,20 @@
                     <article class="history-item">
                         <strong>{{ item.title }}</strong>
                         <div class="history-people">
-                            {% for person in item.people %}
-                                <section class="history-person">
-                                    <h3>{{ person.filename }}</h3>
-                                    <p>Age: {{ person.age }}</p>
-                                    <p>Height: {{ person.height }} m</p>
-                                    <p>Weight: {{ person.weight }} kg</p>
-                                    <p>Gender: {{ person.gender }}</p>
-                                </section>
-                            {% endfor %}
+                            <section class="history-person">
+                                <h3>{{ item.person.label }}</h3>
+                                <p>Age: {{ item.person.age }}</p>
+                                <p>Height: {{ item.person.height }} m</p>
+                                <p>Weight: {{ item.person.weight }} kg</p>
+                                <p>Gender: {{ item.person.gender }}</p>
+                            </section>
                         </div>
                     </article>
                 {% endfor %}
             </div>
         {% else %}
             <p class="history-empty" id="history-empty">
-                No analyses yet. Your two-image results will appear here.
+                No analyses yet. Your combined same-person results will appear here.
             </p>
             <div class="history-list" id="history-list" hidden></div>
         {% endif %}
@@ -519,7 +517,7 @@
         const diet = document.createElement("p");
 
         card.className = "person-card";
-        title.textContent = person.filename;
+        title.textContent = person.label;
         metrics.className = "metric-list";
         diet.className = "diet-copy";
 
@@ -545,28 +543,26 @@
         title.textContent = result.title;
         people.className = "history-people";
 
-        result.people.forEach(function (person) {
-            const section = document.createElement("section");
-            const heading = document.createElement("h3");
-            const age = document.createElement("p");
-            const height = document.createElement("p");
-            const weight = document.createElement("p");
-            const gender = document.createElement("p");
+        const section = document.createElement("section");
+        const heading = document.createElement("h3");
+        const age = document.createElement("p");
+        const height = document.createElement("p");
+        const weight = document.createElement("p");
+        const gender = document.createElement("p");
 
-            section.className = "history-person";
-            heading.textContent = person.filename;
-            age.textContent = `Age: ${person.age}`;
-            height.textContent = `Height: ${person.height} m`;
-            weight.textContent = `Weight: ${person.weight} kg`;
-            gender.textContent = `Gender: ${person.gender}`;
+        section.className = "history-person";
+        heading.textContent = result.person.label;
+        age.textContent = `Age: ${result.person.age}`;
+        height.textContent = `Height: ${result.person.height} m`;
+        weight.textContent = `Weight: ${result.person.weight} kg`;
+        gender.textContent = `Gender: ${result.person.gender}`;
 
-            section.appendChild(heading);
-            section.appendChild(age);
-            section.appendChild(height);
-            section.appendChild(weight);
-            section.appendChild(gender);
-            people.appendChild(section);
-        });
+        section.appendChild(heading);
+        section.appendChild(age);
+        section.appendChild(height);
+        section.appendChild(weight);
+        section.appendChild(gender);
+        people.appendChild(section);
 
         article.appendChild(title);
         article.appendChild(people);
@@ -590,9 +586,7 @@
         resultTitle.textContent = result.title;
         resultGrid.innerHTML = "";
 
-        result.people.forEach(function (person) {
-            resultGrid.appendChild(createPersonCard(person));
-        });
+        resultGrid.appendChild(createPersonCard(result.person));
 
         resultCard.classList.add("visible");
         addHistoryItem(result);
@@ -626,7 +620,7 @@
 
         submitButton.disabled = true;
         submitButton.textContent = "Analyzing...";
-        statusText.textContent = "Analyzing both person images...";
+        statusText.textContent = "Analyzing the same person from both images...";
 
         try {
             const response = await fetch(uploadForm.action, {
