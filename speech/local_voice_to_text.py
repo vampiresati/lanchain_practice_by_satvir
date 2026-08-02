@@ -2,7 +2,7 @@ from faster_whisper import WhisperModel
 
 WHISPER_MODEL_NAME = "base.en"
 
-print("Loading local Whisper model...")
+# print("Loading local Whisper model...")
 
 whisper_model = WhisperModel(
     WHISPER_MODEL_NAME,

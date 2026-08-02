@@ -4,7 +4,7 @@ except Exception:
     pyttsx3 = None
 
 
-print("Initializing local text-to-speech...")
+# print("Initializing local text-to-speech...")
 
 tts_engine = None
 if pyttsx3 is not None:

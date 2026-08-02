@@ -48,25 +48,33 @@ def think(text: str) -> str:
 
 
 def main() -> None:
-    if sd is None:
-        print("PortAudio is not available, so microphone recording is disabled.")
-        transcript = input("Type your message instead: ").strip()
-        if not transcript:
-            raise ValueError("No input provided.")
-    else:
-        audio_file = record_audio()
-        try:
-            transcript = transcribe(audio_file)
-            print(f"\nYou said: {transcript}")
-        finally:
-            os.unlink(audio_file)
+    # print("Gemini Lite Voice Assistant")
+    speak("Hello! How can I help you i am temparture perdictor,Enter exit ,quit or stop or bye to go out and Enter to record?")
+    while True:
+        user_query = input("Enter exit ,quit or stop or bye to go out: ")
+        if user_query.lower() == "exit" or user_query.lower() == "quit" or user_query.lower() == "stop" or user_query.lower() == "bye":
+            break
 
-    reply = think(transcript)
-    if not reply:
-        raise RuntimeError("Gemini returned an empty response.")
+        if sd is None:
+            print("PortAudio is not available, so microphone recording is disabled.")
+            transcript = input("Type your message instead: ").strip()
+            if not transcript:
+                raise ValueError("No input provided.")
+        else:
+            audio_file = record_audio()
+            try:
+                transcript = transcribe(audio_file)
+                print(f"\nYou said: {transcript}")
+            finally:
+                os.unlink(audio_file)
 
-    print(f"AI: {reply}")
-    speak(reply)
+        reply = think(transcript)
+        if not reply:
+            raise RuntimeError("Gemini returned an empty response.")
+
+        print(f"AI: {reply}")
+        speak(reply)
+
 
 
 if __name__ == "__main__":
