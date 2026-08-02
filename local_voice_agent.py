@@ -1,63 +1,16 @@
 import os
-import tempfile
-import time
 from typing import Optional
 
-import soundfile as sf
-from faster_whisper import WhisperModel
 from langchain.agents import create_agent
-
-try:
-    import sounddevice as sd
-    SOUNDDEVICE_IMPORT_ERROR = None
-except OSError as error:
-    sd = None
-    SOUNDDEVICE_IMPORT_ERROR = error
-
-try:
-    import pyttsx3
-    PYTTSX3_IMPORT_ERROR = None
-except Exception as error:
-    pyttsx3 = None
-    PYTTSX3_IMPORT_ERROR = error
-
+from speech.local_text_to_voice import speak, tts_engine
+from speech.local_recorder import record_audio, sd
+from speech.local_voice_to_text import WHISPER_MODEL_NAME, transcribe
 
 # ---------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------
 
 OLLAMA_MODEL = "qwen3:4b"
-
-SAMPLE_RATE = 16_000
-CHANNELS = 1
-MAX_DURATION = 30
-
-# Whisper model choices:
-# tiny.en   -> fastest, English only
-# base.en   -> better accuracy, English only
-# small     -> multilingual, slower
-WHISPER_MODEL_NAME = "base.en"
-
-
-# ---------------------------------------------------------
-# Load local models once
-# ---------------------------------------------------------
-
-print("Loading local Whisper model...")
-
-whisper_model = WhisperModel(
-    WHISPER_MODEL_NAME,
-    device="cpu",
-    compute_type="int8",
-)
-
-print("Initializing local text-to-speech...")
-
-tts_engine = None
-if pyttsx3 is not None:
-    tts_engine = pyttsx3.init()
-    tts_engine.setProperty("rate", 175)
-    tts_engine.setProperty("volume", 1.0)
 
 print("Creating LangChain Ollama agent...")
 
@@ -78,99 +31,6 @@ conversation = [
         ),
     }
 ]
-
-
-def record_audio() -> str:
-    """
-    Record microphone audio.
-
-    Recording stops when the user presses Enter or when MAX_DURATION
-    seconds have elapsed.
-    """
-
-    if sd is None:
-        raise RuntimeError(
-            "Microphone recording is unavailable because PortAudio is not installed."
-        ) from SOUNDDEVICE_IMPORT_ERROR
-
-    input("\nPress Enter to start recording...")
-
-    print(
-        f"Recording for up to {MAX_DURATION} seconds. "
-        "Press Enter to stop."
-    )
-
-    max_frames = MAX_DURATION * SAMPLE_RATE
-
-    start_time = time.monotonic()
-
-    audio_data = sd.rec(
-        max_frames,
-        samplerate=SAMPLE_RATE,
-        channels=CHANNELS,
-        dtype="float32",
-    )
-
-    input()
-
-    elapsed = time.monotonic() - start_time
-    sd.stop()
-
-    recorded_frames = min(
-        max(int(elapsed * SAMPLE_RATE), 1),
-        max_frames,
-    )
-
-    audio_data = audio_data[:recorded_frames]
-
-    print(f"Recording stopped after {elapsed:.1f} seconds.")
-
-    temporary_file = tempfile.NamedTemporaryFile(
-        suffix=".wav",
-        delete=False,
-    )
-    temporary_file.close()
-
-    sf.write(
-        temporary_file.name,
-        audio_data,
-        SAMPLE_RATE,
-    )
-
-    return temporary_file.name
-
-
-def transcribe(audio_path: str) -> str:
-    """
-    Transcribe audio locally with faster-whisper.
-    """
-
-    print("Transcribing locally...")
-
-    segments, information = whisper_model.transcribe(
-        audio_path,
-        beam_size=5,
-        vad_filter=True,
-        condition_on_previous_text=False,
-    )
-
-    text_parts = []
-
-    for segment in segments:
-        cleaned_text = segment.text.strip()
-
-        if cleaned_text:
-            text_parts.append(cleaned_text)
-
-    transcript = " ".join(text_parts).strip()
-
-    if information.language:
-        print(
-            f"Detected language: {information.language} "
-            f"({information.language_probability:.2f})"
-        )
-
-    return transcript
 
 
 def ask_ollama(user_text: str) -> str:
@@ -225,25 +85,6 @@ def ask_ollama(user_text: str) -> str:
     )
 
     return reply
-
-
-def speak(text: str) -> None:
-    """
-    Speak the response locally using pyttsx3/eSpeak.
-    """
-
-    if not text:
-        return
-
-    if tts_engine is None:
-        print(
-            "Text-to-speech is unavailable on this machine. "
-            "Response will be shown as text only."
-        )
-        return
-
-    tts_engine.say(text)
-    tts_engine.runAndWait()
 
 
 def main() -> None:
