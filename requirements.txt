@@ -16,3 +16,8 @@ langchain-google-genai
 langgraph-checkpoint-sqlite
 flask
 pydantic
+gradio
+sounddevice
+pyttsx3
+soundfile
+faster-whisper
