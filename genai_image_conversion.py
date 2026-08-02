@@ -8,6 +8,7 @@ import os
 from pydantic import BaseModel, Field, ValidationError
 load_dotenv()
 import base64
+import mimetypes
 
 class ImageResponse(BaseModel):
     describe_image: str = Field(description="Describe the image")
@@ -20,7 +21,9 @@ class ImageResponse(BaseModel):
     time: str = Field(description="Time in the image")
     weather: str = Field(description="Weather in the image")
     location: str = Field(description="Location in the image")
-with open("images/img.png", "rb") as f:
+path="images/img.png"
+mime_type, _ = mimetypes.guess_type(path)
+with open(path, "rb") as f:
     binary_image=f.read()
     base64_image=base64.b64encode(binary_image)
     base64_image=base64_image.decode("utf-8")
@@ -31,7 +34,7 @@ llm = ChatGoogleGenerativeAI(model="gemini-3.1-flash-lite",temperature=0.7)
 system_prompt = """You are a helpful image descriptor.Describe what you seen in image. """
 user_query = "Describe the image"
 agent = create_agent(model=llm,system_prompt=system_prompt,response_format=ImageResponse)
-response = agent.invoke({"messages": [{"role": "user", "content": user_query},{"role": "user", "content": [{"type": "image", "base64": base64_image,"mime_type": "image/png"}]}]})
+response = agent.invoke({"messages": [{"role": "user", "content": user_query},{"role": "user", "content": [{"type": "image", "base64": base64_image,"mime_type": mime_type}]}]})
 # print(response['structured_response'])
 describe_image=response['structured_response'].describe_image
 area=response['structured_response'].area
