@@ -241,7 +241,7 @@ def generate_newsletter_ollama(search_results):
     """
 
     model = ChatOllama(
-        model="ollama:qwen3:4b",
+        model="qwen3:4b",
         temperature=0.3,
     )
 
