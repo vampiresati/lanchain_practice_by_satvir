@@ -33,8 +33,8 @@ def search_coffee_news(query, max_results=15, timelimit="w"):
 def generate_newsletter(search_results):
     prompt = f"""
     You are a professional newsletter writer for an organic coffee business.
-    Below are the search results for this week's coffee news. Each result includes the content and the 
-    source url. 
+    Below are the search results for this week's coffee news. Each result includes the body and the 
+    href. 
 
     SEARCH RESULTS:
     {search_results}
@@ -43,7 +43,7 @@ def generate_newsletter(search_results):
 
     Rules:
     - Focus on the positive news about coffee
-    - Provide references using the URLs from the SEARCH RESULTS
+    - Provide references using the href from the SEARCH RESULTS
     """
     # model = init_chat_model("gemini-3-flash-preview", model_provider="google_genai", temperature=0.5)
     model = init_chat_model("gemini-3.1-flash-lite", model_provider="google_genai")
