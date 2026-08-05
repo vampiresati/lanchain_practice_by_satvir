@@ -90,7 +90,7 @@ agent = create_agent(
     tools=[list_directory, write_file, read_file, create_directory]
 )
 
-user_input = "Create me a hello world flask app in the current directory"
+user_input = "Create me a hello world flask app in the current directory and with name app_local.py file"
 messages = [{"role": "user", "content": user_input}]
 
 chunks = agent.stream({"messages": messages}, stream_mode='updates')
