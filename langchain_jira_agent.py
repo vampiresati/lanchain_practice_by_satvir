@@ -360,6 +360,157 @@ class JiraClient:
 
         return comments
 
+    def search_tickets(
+        self,
+        date_filter: str = "today",
+        date_field: str = "created",
+        status: Optional[str] = None,
+        start_date: Optional[str] = None,
+        end_date: Optional[str] = None,
+        max_results: int = 50,
+        project_key: Optional[str] = None,
+    ) -> list[dict[str, Any]]:
+        """
+        Search Jira tickets by date, optionally narrowing by current status.
+        """
+
+        allowed_fields = {
+            "created",
+            "updated",
+            "resolved",
+        }
+
+        if date_field not in allowed_fields:
+            raise ValueError(
+                "date_field must be created, updated, or resolved"
+            )
+
+        selected_project = project_key or self.project_key
+
+        if not selected_project:
+            raise ValueError(
+                "Project key is required."
+            )
+
+        if date_filter == "today":
+            date_condition = (
+                f'{date_field} >= startOfDay() '
+                f'AND {date_field} < startOfDay("+1d")'
+            )
+        elif date_filter == "yesterday":
+            date_condition = (
+                f'{date_field} >= startOfDay("-1d") '
+                f'AND {date_field} < startOfDay()'
+            )
+        elif date_filter == "date_range":
+            if not start_date or not end_date:
+                raise ValueError(
+                    "start_date and end_date are required "
+                    "for date_range."
+                )
+
+            date_condition = (
+                f'{date_field} >= "{start_date}" '
+                f'AND {date_field} <= "{end_date}"'
+            )
+        else:
+            raise ValueError(
+                "date_filter must be today, yesterday, "
+                "or date_range."
+            )
+
+        status_condition = ""
+        if status:
+            escaped_status = status.replace('"', '\\"')
+            status_condition = (
+                f' AND status = "{escaped_status}"'
+            )
+
+        jql = (
+            f'project = "{selected_project}" '
+            f'AND {date_condition}'
+            f'{status_condition} '
+            f'ORDER BY {date_field} DESC'
+        )
+
+        response = self.request(
+            method="POST",
+            endpoint="/rest/api/3/search/jql",
+            json={
+                "jql": jql,
+                "maxResults": max_results,
+                "fields": [
+                    "summary",
+                    "description",
+                    "status",
+                    "issuetype",
+                    "priority",
+                    "assignee",
+                    "reporter",
+                    "created",
+                    "updated",
+                    "resolutiondate",
+                ],
+            },
+        )
+
+        result = response.json()
+        tickets = []
+
+        for issue in result.get("issues", []):
+            fields = issue.get("fields", {})
+
+            status_data = fields.get("status")
+            issue_type = fields.get("issuetype")
+            priority = fields.get("priority")
+            assignee = fields.get("assignee")
+            reporter = fields.get("reporter")
+
+            tickets.append(
+                {
+                    "id": issue.get("id"),
+                    "key": issue.get("key"),
+                    "url": (
+                        f"{self.jira_url}/browse/"
+                        f"{issue.get('key')}"
+                    ),
+                    "summary": fields.get("summary"),
+                    "description": self.adf_to_text(
+                        fields.get("description")
+                    ).strip(),
+                    "status": (
+                        status_data.get("name")
+                        if status_data
+                        else None
+                    ),
+                    "issue_type": (
+                        issue_type.get("name")
+                        if issue_type
+                        else None
+                    ),
+                    "priority": (
+                        priority.get("name")
+                        if priority
+                        else None
+                    ),
+                    "assignee": (
+                        assignee.get("displayName")
+                        if assignee
+                        else None
+                    ),
+                    "reporter": (
+                        reporter.get("displayName")
+                        if reporter
+                        else None
+                    ),
+                    "created": fields.get("created"),
+                    "updated": fields.get("updated"),
+                    "resolved": fields.get("resolutiondate"),
+                }
+            )
+
+        return tickets
+
 
 # ============================================================
 # Create Jira client
@@ -494,163 +645,6 @@ def read_jira_comments(issue_key: str) -> str:
             indent=2,
         )
 
-def search_tickets(
-    self,
-    date_filter: str = "today",
-    date_field: str = "created",
-    start_date: Optional[str] = None,
-    end_date: Optional[str] = None,
-    max_results: int = 50,
-    project_key: Optional[str] = None,
-) -> list[dict[str, Any]]:
-    """
-    Search Jira tickets by date.
-
-    date_filter:
-        today
-        yesterday
-        date_range
-
-    date_field:
-        created
-        updated
-        resolved
-
-    Date format:
-        YYYY-MM-DD
-    """
-
-    allowed_fields = {
-        "created",
-        "updated",
-        "resolved",
-    }
-
-    if date_field not in allowed_fields:
-        raise ValueError(
-            "date_field must be created, updated, or resolved"
-        )
-
-    selected_project = project_key or self.project_key
-
-    if not selected_project:
-        raise ValueError(
-            "Project key is required."
-        )
-
-    if date_filter == "today":
-        date_condition = (
-            f'{date_field} >= startOfDay() '
-            f'AND {date_field} < startOfDay("+1d")'
-        )
-
-    elif date_filter == "yesterday":
-        date_condition = (
-            f'{date_field} >= startOfDay("-1d") '
-            f'AND {date_field} < startOfDay()'
-        )
-
-    elif date_filter == "date_range":
-        if not start_date or not end_date:
-            raise ValueError(
-                "start_date and end_date are required "
-                "for date_range."
-            )
-
-        date_condition = (
-            f'{date_field} >= "{start_date}" '
-            f'AND {date_field} <= "{end_date}"'
-        )
-
-    else:
-        raise ValueError(
-            "date_filter must be today, yesterday, "
-            "or date_range."
-        )
-
-    jql = (
-        f'project = "{selected_project}" '
-        f'AND {date_condition} '
-        f'ORDER BY {date_field} DESC'
-    )
-
-    response = self.request(
-        method="POST",
-        endpoint="/rest/api/3/search/jql",
-        json={
-            "jql": jql,
-            "maxResults": max_results,
-            "fields": [
-                "summary",
-                "description",
-                "status",
-                "issuetype",
-                "priority",
-                "assignee",
-                "reporter",
-                "created",
-                "updated",
-                "resolutiondate",
-            ],
-        },
-    )
-
-    result = response.json()
-    tickets = []
-
-    for issue in result.get("issues", []):
-        fields = issue.get("fields", {})
-
-        status = fields.get("status")
-        issue_type = fields.get("issuetype")
-        priority = fields.get("priority")
-        assignee = fields.get("assignee")
-        reporter = fields.get("reporter")
-
-        tickets.append(
-            {
-                "id": issue.get("id"),
-                "key": issue.get("key"),
-                "url": (
-                    f"{self.jira_url}/browse/"
-                    f"{issue.get('key')}"
-                ),
-                "summary": fields.get("summary"),
-                "description": self.adf_to_text(
-                    fields.get("description")
-                ).strip(),
-                "status": (
-                    status.get("name")
-                    if status
-                    else None
-                ),
-                "issue_type": (
-                    issue_type.get("name")
-                    if issue_type
-                    else None
-                ),
-                "priority": (
-                    priority.get("name")
-                    if priority
-                    else None
-                ),
-                "assignee": (
-                    assignee.get("displayName")
-                    if assignee
-                    else None
-                ),
-                "reporter": (
-                    reporter.get("displayName")
-                    if reporter
-                    else None
-                ),
-                "created": fields.get("created"),
-                "updated": fields.get("updated"),
-                "resolved": fields.get("resolutiondate"),
-            }
-        )
-
-    return tickets
 def search_jira_tickets_by_date(
     date_filter: str = "today",
     date_field: str = "updated",
@@ -763,30 +757,26 @@ agent = create_agent(
 )
 
 
-# ============================================================
-# Run agent
-# # ============================================================
-#
-user_input = (
-    "Jira ticket moved today to alpha testing."
-)
-#
-result = agent.invoke(
-    {
-        "messages": [
-            {
-                "role": "user",
-                "content": user_input,
-            }
-        ]
-    }
-)
-#
-#
-# Print only the final assistant response
-final_message = result["messages"][-1]
+if __name__ == "__main__":
+    user_input = (
+        "Jira ticket moved today to alpha testing."
+    )
 
-if isinstance(final_message.content, str):
-    print(final_message.content)
-else:
-    print(json.dumps(final_message.content, indent=2))
+    result = agent.invoke(
+        {
+            "messages": [
+                {
+                    "role": "user",
+                    "content": user_input,
+                }
+            ]
+        }
+    )
+
+    # Print only the final assistant response.
+    final_message = result["messages"][-1]
+
+    if isinstance(final_message.content, str):
+        print(final_message.content)
+    else:
+        print(json.dumps(final_message.content, indent=2))
