@@ -322,8 +322,18 @@ if __name__ == "__main__":
     #     message=message,
     #     headless=False,
     # )
-    last_message = read_last_message_from_group(
-        group_name="ai_commands",
-        headless=False,
-    )
-    print(last_message)
+    # last_message = read_last_message_from_group(
+    #     group_name="ai_commands",
+    #     headless=False,
+    # )
+    # print(last_message)
+    message1="Hi, I am testing whatsapp api, I am a bot, I am here to help you. How can I help you?"
+    send_whatsapp_group_message(
+        group_name="ai_tickets_to_test",
+        message=message1,
+        headless=False)
+    message2="Hi, I am testing whatsapp api, I am a bot, I am here to help you. How can I help you?"
+    send_whatsapp_group_message(
+        group_name="ai_ticketwise_detail",
+        message=message2,
+        headless=False)
