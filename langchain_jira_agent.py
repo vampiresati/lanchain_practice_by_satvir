@@ -653,7 +653,7 @@ def search_jira_tickets_by_date(
     end_date: str = "",
     max_results: int = 50,
 ) -> str:
-    """Search Jira tickets by date and optional current status."""
+    """Search Jira tickets by date and return ticket keys only."""
 
     try:
         tickets = jira.search_tickets(
@@ -669,7 +669,11 @@ def search_jira_tickets_by_date(
             {
                 "success": True,
                 "count": len(tickets),
-                "tickets": tickets,
+                "ticket_numbers": [
+                    ticket["key"]
+                    for ticket in tickets
+                    if ticket.get("key")
+                ],
             },
             indent=2,
         )
@@ -741,6 +745,9 @@ Rules:
 4. Never invent an issue key.
 
 5. Never claim an operation succeeded unless the tool returns success=true.
+
+6. When search_jira_tickets_by_date is used, return only the ticket numbers
+   unless the user explicitly asks for more details.
 """
 
 agent = create_agent(
