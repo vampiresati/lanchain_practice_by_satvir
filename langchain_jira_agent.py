@@ -372,7 +372,7 @@ jira = JiraClient()
 # LangChain Jira tools
 # ============================================================
 
-@tool
+
 def create_jira_ticket(
     summary: str,
     description: str,
@@ -409,7 +409,7 @@ def create_jira_ticket(
         )
 
 
-@tool
+
 def read_jira_ticket(issue_key: str) -> str:
     """
     Read a Jira ticket using its issue key, such as TRAN-25.
@@ -435,8 +435,6 @@ def read_jira_ticket(issue_key: str) -> str:
             indent=2,
         )
 
-
-@tool
 def add_jira_comment(
     issue_key: str,
     comment: str,
@@ -469,7 +467,7 @@ def add_jira_comment(
         )
 
 
-@tool
+
 def read_jira_comments(issue_key: str) -> str:
     """
     Read all comments from a Jira ticket.
@@ -495,69 +493,74 @@ def read_jira_comments(issue_key: str) -> str:
             },
             indent=2,
         )
-
+#
+# a=read_jira_ticket('TRAN-3817')
+# print(a)
+# add_jira_comment('TRAN-4081','hi gautam i am testing from local')
+a=read_jira_comments('TRAN-4081')
+print(a)
 
 # ============================================================
 # Local Qwen model through Ollama
 # ============================================================
-
-llm = init_chat_model(
-    "qwen3:4b",
-    model_provider="ollama",
-    temperature=0.2,
-)
-
-
-# ============================================================
-# Create agent
-# ============================================================
-
-agent = create_agent(
-    model=llm,
-    tools=[
-        create_jira_ticket,
-        read_jira_ticket,
-        add_jira_comment,
-        read_jira_comments,
-    ],
-    system_prompt=(
-        "You are a Jira assistant. "
-        "Use the available Jira tools to create tickets, read tickets, "
-        "add comments, and read comments. "
-        "An issue key looks like TRAN-25. "
-        "If an operation needs an issue key and the user did not provide "
-        "one, ask the user for it. "
-        "Do not invent issue keys. "
-        "Never claim an operation succeeded unless the tool returned "
-        "success=true."
-    ),
-)
+#
+# llm = init_chat_model(
+#     "qwen3:4b",
+#     model_provider="ollama",
+#     temperature=0.2,
+# )
+#
+#
+# # ============================================================
+# # Create agent
+# # ============================================================
+#
+# agent = create_agent(
+#     model=llm,
+#     tools=[
+#         create_jira_ticket,
+#         read_jira_ticket,
+#         add_jira_comment,
+#         read_jira_comments,
+#     ],
+#     system_prompt=(
+#         "You are a Jira assistant. "
+#         "Use the available Jira tools to create tickets, read tickets, "
+#         "add comments, and read comments. "
+#         "An issue key looks like TRAN-25. "
+#         "If an operation needs an issue key and the user did not provide "
+#         "one, ask the user for it. "
+#         "Do not invent issue keys. "
+#         "Never claim an operation succeeded unless the tool returned "
+#         "success=true."
+#     ),
+# )
 
 
 # ============================================================
 # Run agent
-# ============================================================
-
-user_input = (
-    "Jira ticket moved today to alpha testing."
-)
-
-result = agent.invoke(
-    {
-        "messages": [
-            {
-                "role": "user",
-                "content": user_input,
-            }
-        ]
-    }
-)
-
-
-# Print only the final assistant response
-final_message = result["messages"][-1]
-
-if isinstance(final_message.content, str):
-    print(final_message.content)
-else:
-    print(json.dumps(final_message.content, indent=2))
+# # ============================================================
+#
+# user_input = (
+#     "Jira ticket moved today to alpha testing."
+# )
+#
+# result = agent.invoke(
+#     {
+#         "messages": [
+#             {
+#                 "role": "user",
+#                 "content": user_input,
+#             }
+#         ]
+#     }
+# )
+#
+#
+# # Print only the final assistant response
+# final_message = result["messages"][-1]
+#
+# if isinstance(final_message.content, str):
+#     print(final_message.content)
+# else:
+#     print(json.dumps(final_message.content, indent=2))
