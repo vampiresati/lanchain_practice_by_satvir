@@ -493,6 +493,201 @@ def read_jira_comments(issue_key: str) -> str:
             },
             indent=2,
         )
+
+def search_tickets(
+    self,
+    date_filter: str = "today",
+    date_field: str = "created",
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    max_results: int = 50,
+    project_key: Optional[str] = None,
+) -> list[dict[str, Any]]:
+    """
+    Search Jira tickets by date.
+
+    date_filter:
+        today
+        yesterday
+        date_range
+
+    date_field:
+        created
+        updated
+        resolved
+
+    Date format:
+        YYYY-MM-DD
+    """
+
+    allowed_fields = {
+        "created",
+        "updated",
+        "resolved",
+    }
+
+    if date_field not in allowed_fields:
+        raise ValueError(
+            "date_field must be created, updated, or resolved"
+        )
+
+    selected_project = project_key or self.project_key
+
+    if not selected_project:
+        raise ValueError(
+            "Project key is required."
+        )
+
+    if date_filter == "today":
+        date_condition = (
+            f'{date_field} >= startOfDay() '
+            f'AND {date_field} < startOfDay("+1d")'
+        )
+
+    elif date_filter == "yesterday":
+        date_condition = (
+            f'{date_field} >= startOfDay("-1d") '
+            f'AND {date_field} < startOfDay()'
+        )
+
+    elif date_filter == "date_range":
+        if not start_date or not end_date:
+            raise ValueError(
+                "start_date and end_date are required "
+                "for date_range."
+            )
+
+        date_condition = (
+            f'{date_field} >= "{start_date}" '
+            f'AND {date_field} <= "{end_date}"'
+        )
+
+    else:
+        raise ValueError(
+            "date_filter must be today, yesterday, "
+            "or date_range."
+        )
+
+    jql = (
+        f'project = "{selected_project}" '
+        f'AND {date_condition} '
+        f'ORDER BY {date_field} DESC'
+    )
+
+    response = self.request(
+        method="POST",
+        endpoint="/rest/api/3/search/jql",
+        json={
+            "jql": jql,
+            "maxResults": max_results,
+            "fields": [
+                "summary",
+                "description",
+                "status",
+                "issuetype",
+                "priority",
+                "assignee",
+                "reporter",
+                "created",
+                "updated",
+                "resolutiondate",
+            ],
+        },
+    )
+
+    result = response.json()
+    tickets = []
+
+    for issue in result.get("issues", []):
+        fields = issue.get("fields", {})
+
+        status = fields.get("status")
+        issue_type = fields.get("issuetype")
+        priority = fields.get("priority")
+        assignee = fields.get("assignee")
+        reporter = fields.get("reporter")
+
+        tickets.append(
+            {
+                "id": issue.get("id"),
+                "key": issue.get("key"),
+                "url": (
+                    f"{self.jira_url}/browse/"
+                    f"{issue.get('key')}"
+                ),
+                "summary": fields.get("summary"),
+                "description": self.adf_to_text(
+                    fields.get("description")
+                ).strip(),
+                "status": (
+                    status.get("name")
+                    if status
+                    else None
+                ),
+                "issue_type": (
+                    issue_type.get("name")
+                    if issue_type
+                    else None
+                ),
+                "priority": (
+                    priority.get("name")
+                    if priority
+                    else None
+                ),
+                "assignee": (
+                    assignee.get("displayName")
+                    if assignee
+                    else None
+                ),
+                "reporter": (
+                    reporter.get("displayName")
+                    if reporter
+                    else None
+                ),
+                "created": fields.get("created"),
+                "updated": fields.get("updated"),
+                "resolved": fields.get("resolutiondate"),
+            }
+        )
+
+    return tickets
+def search_jira_tickets_by_date(
+    date_filter: str = "today",
+    date_field: str = "updated",
+    status: str = "",
+    start_date: str = "",
+    end_date: str = "",
+    max_results: int = 50,
+) -> str:
+    """Search Jira tickets by date and optional current status."""
+
+    try:
+        tickets = jira.search_tickets(
+            date_filter=date_filter,
+            date_field=date_field,
+            status=status or None,
+            start_date=start_date or None,
+            end_date=end_date or None,
+            max_results=max_results,
+        )
+
+        return json.dumps(
+            {
+                "success": True,
+                "count": len(tickets),
+                "tickets": tickets,
+            },
+            indent=2,
+        )
+
+    except Exception as error:
+        return json.dumps(
+            {
+                "success": False,
+                "error": str(error),
+            },
+            indent=2,
+        )
 #
 # a=read_jira_ticket('TRAN-3817')
 # print(a)
@@ -504,63 +699,94 @@ def read_jira_comments(issue_key: str) -> str:
 # Local Qwen model through Ollama
 # ============================================================
 #
-# llm = init_chat_model(
-#     "qwen3:4b",
-#     model_provider="ollama",
-#     temperature=0.2,
-# )
+llm = init_chat_model(
+    "qwen3:4b",
+    model_provider="ollama",
+    temperature=0.2,
+)
 #
 #
 # # ============================================================
 # # Create agent
 # # ============================================================
 #
-# agent = create_agent(
-#     model=llm,
-#     tools=[
-#         create_jira_ticket,
-#         read_jira_ticket,
-#         add_jira_comment,
-#         read_jira_comments,
-#     ],
-#     system_prompt=(
-#         "You are a Jira assistant. "
-#         "Use the available Jira tools to create tickets, read tickets, "
-#         "add comments, and read comments. "
-#         "An issue key looks like TRAN-25. "
-#         "If an operation needs an issue key and the user did not provide "
-#         "one, ask the user for it. "
-#         "Do not invent issue keys. "
-#         "Never claim an operation succeeded unless the tool returned "
-#         "success=true."
-#     ),
-# )
+system_prompt = """
+You are a Jira assistant.
+
+Available tools:
+- create_jira_ticket
+- read_jira_ticket
+- add_jira_comment
+- read_jira_comments
+- search_jira_tickets_by_date
+
+Rules:
+
+1. When the user asks about tickets from today, yesterday, or a date range,
+   use search_jira_tickets_by_date.
+   Do not ask for an issue key.
+
+2. Examples:
+   - "tickets created today"
+     -> date_filter="today", date_field="created"
+
+   - "tickets updated yesterday"
+     -> date_filter="yesterday", date_field="updated"
+
+   - "tickets moved today"
+     -> date_filter="today", date_field="updated"
+
+   - "tickets moved to alpha testing today"
+     -> search tickets updated today, then inspect the returned tickets.
+
+3. Ask for an issue key only when the user wants to:
+   - read one specific ticket
+   - add a comment to one specific ticket
+   - read comments from one specific ticket
+
+4. Never invent an issue key.
+
+5. Never claim an operation succeeded unless the tool returns success=true.
+"""
+
+agent = create_agent(
+    model=llm,
+    tools=[
+        create_jira_ticket,
+        read_jira_ticket,
+        add_jira_comment,
+        read_jira_comments,
+        search_jira_tickets_by_date,
+
+    ],
+    system_prompt=system_prompt,
+)
 
 
 # ============================================================
 # Run agent
 # # ============================================================
 #
-# user_input = (
-#     "Jira ticket moved today to alpha testing."
-# )
+user_input = (
+    "Jira ticket moved today to alpha testing."
+)
 #
-# result = agent.invoke(
-#     {
-#         "messages": [
-#             {
-#                 "role": "user",
-#                 "content": user_input,
-#             }
-#         ]
-#     }
-# )
+result = agent.invoke(
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": user_input,
+            }
+        ]
+    }
+)
 #
 #
-# # Print only the final assistant response
-# final_message = result["messages"][-1]
-#
-# if isinstance(final_message.content, str):
-#     print(final_message.content)
-# else:
-#     print(json.dumps(final_message.content, indent=2))
+# Print only the final assistant response
+final_message = result["messages"][-1]
+
+if isinstance(final_message.content, str):
+    print(final_message.content)
+else:
+    print(json.dumps(final_message.content, indent=2))
