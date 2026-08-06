@@ -71,5 +71,6 @@ def send_whatsapp_message(
 if __name__ == "__main__":
     send_whatsapp_message(
         phone=contact,
-        message=message
+        message=message,
+        headless=False,
     )
