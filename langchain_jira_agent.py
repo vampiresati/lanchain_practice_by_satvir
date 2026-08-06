@@ -497,8 +497,8 @@ def read_jira_comments(issue_key: str) -> str:
 # a=read_jira_ticket('TRAN-3817')
 # print(a)
 # add_jira_comment('TRAN-4081','hi gautam i am testing from local')
-a=read_jira_comments('TRAN-4081')
-print(a)
+# a=read_jira_comments('TRAN-4081')
+# print(a)
 
 # ============================================================
 # Local Qwen model through Ollama
