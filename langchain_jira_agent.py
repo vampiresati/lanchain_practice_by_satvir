@@ -768,7 +768,6 @@ if __name__ == "__main__":
     user_input = (
         "Jira ticket moved today to alpha testing."
     )
-
     result = agent.invoke(
         {
             "messages": [
