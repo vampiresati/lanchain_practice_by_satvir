@@ -1,4 +1,5 @@
 import os
+import sys
 import time
 import urllib.parse
 from pathlib import Path
@@ -280,19 +281,68 @@ def send_whatsapp_group_message(
         _close_whatsapp(playwright, browser)
 
 
-def _wait_until_sent(page: Page, message_box: Locator, timeout: int = 15000) -> None:
-    """Wait for the composer to clear, which means WhatsApp accepted the message."""
+# WhatsApp exposes delivery state as an aria-label on the message row.
+# "Pending" means it has not left the browser yet.
+_DELIVERED_STATUSES = ("sent", "delivered", "read", "played")
+
+_LAST_ROW_STATUS_JS = """
+() => {
+  const rows = document.querySelectorAll("#main div[role='row']");
+  const last = rows[rows.length - 1];
+  if (!last) return null;
+  return Array.from(last.querySelectorAll('span[aria-label]'))
+    .map(el => (el.getAttribute('aria-label') || '').trim().toLowerCase());
+}
+"""
+
+
+def _wait_until_sent(page: Page, message_box: Locator, timeout: int = 30000) -> bool:
+    """
+    Wait until WhatsApp has actually transmitted the message.
+
+    An empty composer is NOT proof of sending: WhatsApp clears it optimistically
+    the moment Enter is pressed, before the message goes over the wire. Closing
+    the browser at that point silently discards the message. The real signal is
+    the delivery status on the message row.
+
+    Returns True if delivery was confirmed, False if it could not be confirmed
+    before the timeout (the message has usually still gone out in that case).
+    """
 
     deadline = time.time() + (timeout / 1000)
+
+    # 1. The composer must clear, otherwise Enter inserted a newline instead
+    #    of submitting and nothing was ever sent.
+    cleared = False
     while time.time() < deadline:
         try:
-            if not message_box.inner_text().strip():
-                return
+            cleared = not message_box.inner_text().strip()
         except Exception:
-            return
+            # The composer node was replaced, which only happens after submit.
+            cleared = True
+        if cleared:
+            break
         page.wait_for_timeout(250)
 
-    raise RuntimeError("Message does not appear to have been sent (composer still has text).")
+    if not cleared:
+        raise RuntimeError(
+            "Message was not submitted — the composer still holds text. "
+            "Enter may have been sent to the wrong element."
+        )
+
+    # 2. Wait for the message row to report a non-pending delivery status.
+    while time.time() < deadline:
+        labels = page.evaluate(_LAST_ROW_STATUS_JS) or []
+        if any(status in label for label in labels for status in _DELIVERED_STATUSES):
+            return True
+        page.wait_for_timeout(250)
+
+    print(
+        "Warning: could not confirm delivery before the timeout. "
+        "The message may still be pending — check the chat.",
+        file=sys.stderr,
+    )
+    return False
 
 
 def read_last_message_from_group(

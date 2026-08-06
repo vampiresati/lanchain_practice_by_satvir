@@ -144,9 +144,9 @@ def read_group_command(page, group_name: str) -> str:
     return wa._extract_last_visible_message(page)
 
 
-def send_group_message(page, group_name: str, message: str) -> None:
+def send_group_message(page, group_name: str, message: str) -> bool:
     """
-    Open `group_name` and send `message`.
+    Open `group_name` and send `message`. Returns True if delivery was confirmed.
 
     Newlines are typed as Shift+Enter. A bare Enter would send the message, so
     typing a multi-line string directly would post one message per line.
@@ -164,7 +164,10 @@ def send_group_message(page, group_name: str, message: str) -> None:
             composer.press_sequentially(line, delay=15)
 
     composer.press("Enter")
-    wa._wait_until_sent(page, composer)
+
+    # Must block until WhatsApp confirms delivery — the caller closes the
+    # browser right after, which would discard a still-pending message.
+    return wa._wait_until_sent(page, composer)
 
 
 # ============================================================
@@ -214,13 +217,14 @@ def main() -> int:
             return 0
 
         print(f"\nSending to '{args.target_group}'...")
-        send_group_message(page, args.target_group, report)
-        print("Sent.")
-        return 0
+        confirmed = send_group_message(page, args.target_group, report)
+        print("Sent and delivery confirmed." if confirmed
+              else "Submitted, but delivery was NOT confirmed — check the chat.")
+        return 0 if confirmed else 1
 
     finally:
         wa._close_whatsapp(playwright, browser)
 
-
+#
 if __name__ == "__main__":
     raise SystemExit(main())
