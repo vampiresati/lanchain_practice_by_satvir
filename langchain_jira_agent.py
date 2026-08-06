@@ -412,7 +412,7 @@ def create_jira_ticket(
 @tool
 def read_jira_ticket(issue_key: str) -> str:
     """
-    Read a Jira ticket using its issue key, such as PROJ-25.
+    Read a Jira ticket using its issue key, such as TRAN-25.
     """
 
     try:
@@ -524,7 +524,7 @@ agent = create_agent(
         "You are a Jira assistant. "
         "Use the available Jira tools to create tickets, read tickets, "
         "add comments, and read comments. "
-        "An issue key looks like PROJ-25. "
+        "An issue key looks like TRAN-25. "
         "If an operation needs an issue key and the user did not provide "
         "one, ask the user for it. "
         "Do not invent issue keys. "
