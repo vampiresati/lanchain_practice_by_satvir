@@ -71,5 +71,5 @@ def send_whatsapp_message(
 if __name__ == "__main__":
     send_whatsapp_message(
         phone=contact,
-        message="Deployment finished successfully satvir."
+        message=message
     )
